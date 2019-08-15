@@ -14,8 +14,8 @@ def rle_to_mask(rle_string, image):
     except:
         return np.zeros((height, width), dtype=np.uint8)
 
-def rle_to_mask(image):
-    pixels= image.T.flatten()
+def mask_to_rle(mask):
+    pixels= mask.T.flatten()
     pixels = np.concatenate([[0], pixels, [0]])
     runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
     runs[1::2] -= runs[::2]

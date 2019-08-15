@@ -5,6 +5,8 @@ import cv2 as cv
 import numpy as np
 import pandas as pd
 
+from utils.conversion import rle_to_mask
+
 def clean_training_samples():
     train = pd.read_csv('data/raw/train.csv')
     train.rename(columns={'EncodedPixels':'encoded_pixels'}, inplace=True)
@@ -30,9 +32,9 @@ def clean_training_samples():
 
     return denormalized_train
 
-def load_sample(sample, downscale=1.0):
-    image = cv.imread(os.path.join(self.image_dir, sample.image_id))
-    image = cv2.resize(image,None,fx=downscale,fy=downscale)
+def load_sample(sample, scale=1.0):
+    image = cv.imread(sample.image_id)
+    image = cv.resize(image,None,fx=scale,fy=scale)
 
     labels = np.dstack([
         rle_to_mask(sample.class_1_encoded_pixels, image),
@@ -46,10 +48,10 @@ def load_sample(sample, downscale=1.0):
     return image, np.dstack([labels, non_defects])
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, samples, batch_size=32, shuffle=True, downscale=1.0):
+    def __init__(self, samples, batch_size=32, shuffle=True, scale=1.0):
         self.samples = samples
         self.batch_size = batch_size
-        self.downscale = downscale
+        self.scale = scale
         self.shuffle = shuffle
 
         self.on_epoch_end()
@@ -57,15 +59,14 @@ class DataGenerator(keras.utils.Sequence):
     def __len__(self):
         return int(np.floor(len(self.samples) / self.batch_size))
 
+    def __getitem__(self, index):
+        samples = self.samples.iloc[index*self.batch_size : (index+1)*self.batch_size]
+        images, labels = zip(*[load_sample(s, scale=self.scale) for _, s in samples.iterrows()])
+        return np.array(images), np.array(labels)
+
     def input_output_shape(self):
         input, output = self.__getitem__(0)
         return input.shape[1:], output.shape[1:]
-
-    def __getitem__(self, index):
-        samples = self.samples.iloc[index*self.batch_size : (index+1)*self.batch_size]
-        images, labels = zip(*[load_sample(s, downscale=self.downscale) for s in samples])
-
-        return images, labels
 
     def on_epoch_end(self):
         if self.shuffle == True:
