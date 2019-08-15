@@ -57,8 +57,11 @@ class DataGenerator(keras.utils.Sequence):
     def __len__(self):
         return int(np.floor(len(self.samples) / self.batch_size))
 
+    def input_output_shape(self):
+        input, output = self.__getitem__(0)
+        return input.shape[1:], output.shape[1:]
+
     def __getitem__(self, index):
-        import pdb; pdb.set_trace()
         samples = self.samples.iloc[index*self.batch_size : (index+1)*self.batch_size]
         images, labels = zip(*[load_sample(s, downscale=self.downscale) for s in samples])
 
