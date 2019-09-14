@@ -35,7 +35,7 @@ def clean_training_samples(samples, image_dir):
 
     return denormalized_train
 
-def load_sample(sample, scale=(256, 1600)):
+def load_sample(sample, scale=(256, 1600, 3)):
     image = cv.imread(sample.image_id)
 
     labels = np.dstack([
@@ -45,6 +45,8 @@ def load_sample(sample, scale=(256, 1600)):
         cv.resize(rle_to_mask(sample.class_4_encoded_pixels, image), (scale[1], scale[0]), interpolation=cv.INTER_NEAREST),
     ])
     image = cv.resize(image, (scale[1], scale[0])).astype(np.int8)
+    if scale[-1] == 1:
+        image = np.expand_dims(image[:, :, 0], 2)
     return image, labels
 
 def augment_sample(image, labels):
@@ -58,15 +60,15 @@ def augment_sample(image, labels):
 def resample_classes(samples, resampled_classes):
     for c, n_samples in enumerate(resampled_classes):
         resampled_classes[c] = resample(
-            samples.iloc[samples['class'] == c],
+            samples[samples['class'] == c],
             replace=True,
             n_samples=n_samples,
             random_state=420
         )
-    return pd.concat(resampled_classes)
+    return pd.concat(resampled_classes).reset_index(drop=True)
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, samples, batch_size=32, shuffle=True, augmentations=True):
+    def __init__(self, samples, scale, batch_size=32, shuffle=True, augmentations=True):
         self.samples = samples
         self.batch_size = batch_size
         self.scale = scale

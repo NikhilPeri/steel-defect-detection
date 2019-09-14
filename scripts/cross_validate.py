@@ -2,8 +2,9 @@ import os
 import time
 import importlib
 import argparse
+import pandas as pd
 
-from utils.data import clean_training_samples, DataGenerator
+from utils.data import clean_training_samples, resample_classes, DataGenerator
 from sklearn.model_selection import StratifiedKFold
 
 
@@ -22,8 +23,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     model = load_model(args.model_path)
-    import pdb; pdb.set_trace()
-    samples = clean_training_samples()
+
+    samples = pd.read_csv('data/raw/train.csv')
+    samples = clean_training_samples(samples, 'data/raw/train_images/')
 
     kfolds = StratifiedKFold(n_splits=args.cv_folds, shuffle=True).split(samples.image_id, samples.has_defect)
 
@@ -32,8 +34,8 @@ if __name__ == '__main__':
         train      = resample_classes(samples.iloc[train], [None, None, None, None, None])
         validation = samples.iloc[validation]
 
-        train_generator =      DataGenerator(train,      batch_size=args.batch_size, scale=model.input.shape[1:2], augmentations=True)
-        validation_generator = DataGenerator(validation, batch_size=args.batch_size, scale=model.input.shape[1:2], augmentations=False)
+        train_generator =      DataGenerator(train,      model.input.shape[1:], batch_size=args.batch_size, augmentations=True)
+        validation_generator = DataGenerator(validation, model.input.shape[1:], batch_size=args.batch_size, augmentations=False)
 
         history = model.fit_generator(
             generator=train_generator,
