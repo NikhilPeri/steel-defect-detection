@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np
 import pandas as pd
 
+from matplotlib import pyplot as plt
 from sklearn.utils import resample
 from utils.conversion import rle_to_mask
 
@@ -66,6 +67,23 @@ def resample_classes(samples, resampled_classes):
             random_state=420
         )
     return pd.concat(resampled_classes).reset_index(drop=True)
+
+def display_sample(image, labels):
+    CLASS_ID_COLOURS = {
+        '1': (3,  3, 255),
+        '2': (3, 255, 3),
+        '3': (255, 3, 3),
+        '4': (255, 3, 255),
+    }
+    LABEL_OPACITY=0.15
+    image = image.astype(np.uint8)
+
+    cv.addWeighted(np.multiply(CLASS_ID_COLOURS['1'], np.repeat(np.expand_dims(labels[:, :, 0], axis=2), 3, axis=2)).astype(np.uint8), LABEL_OPACITY, image, 1.0, 0, image)
+    cv.addWeighted(np.multiply(CLASS_ID_COLOURS['2'], np.repeat(np.expand_dims(labels[:, :, 1], axis=2), 3, axis=2)).astype(np.uint8), LABEL_OPACITY, image, 1.0, 0, image)
+    cv.addWeighted(np.multiply(CLASS_ID_COLOURS['3'], np.repeat(np.expand_dims(labels[:, :, 2], axis=2), 3, axis=2)).astype(np.uint8), LABEL_OPACITY, image, 1.0, 0, image)
+    cv.addWeighted(np.multiply(CLASS_ID_COLOURS['4'], np.repeat(np.expand_dims(labels[:, :, 3], axis=2), 3, axis=2)).astype(np.uint8), LABEL_OPACITY, image, 1.0, 0, image)
+
+    plt.imshow(image)
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, samples, scale, batch_size=32, shuffle=True, augmentations=True):

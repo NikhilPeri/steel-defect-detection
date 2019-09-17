@@ -1,6 +1,7 @@
 1. Train Defect Classifier and observe [class activation map](https://jacobgil.github.io/deeplearning/class-activation-maps)
 2. Train (Segmentation Models) on defects and subset of hard negtive examples
 3. Ensemble Results
+4. Train on Balanced Batch Generator
 
 https://www.kaggle.com/nikperi/resnet18-unet?scriptVersionId=20190017
   Epoch 23/50 loss: 0.1282 - acc: 0.6397 - iou_score: 0.8582 - score: 0.8718 - binary_crossentropy: 0.0702 val_score0.8894179120208278
