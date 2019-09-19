@@ -2,11 +2,23 @@ import os
 import numpy as np
 import cv2 as cv
 
+from keras import backend as K
+
 from segmentation_models.metrics import iou_score, dice_score
 from segmentation_models.losses import dice_loss, categorical_crossentropy, binary_crossentropy
 
 def dice_bce_loss(y_pred, y_true):
     return dice_loss(y_pred, y_true) + binary_crossentropy(y_pred, y_true)
+
+#https://arxiv.org/pdf/1707.03237.pdf
+#weights [33., 157., 1., 5.] region_size
+def weighted_dice_loss(weights):
+    weights = K.variable(np.array(weights))
+    def _generalized_dice_loss(y_pred, y_true):
+        numerator = 2 * K.sum(y_true * y_pred, axis=(0,1,2))
+        denominator = K.sum(y_true + y_pred, axis=(0,1,2))
+        return K.mean(weights*(1 - numerator / denominator))
+    return _generalized_dice_loss
 
 
 def compute_test_distribution(model):

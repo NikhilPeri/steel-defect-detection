@@ -1,8 +1,10 @@
 import os
+import re
 import logging
 import json
 import traceback
 import pandas as pd
+import glob
 
 from keras.optimizers import *
 from sklearn.model_selection import ParameterGrid, train_test_split
@@ -13,19 +15,24 @@ from utils.callbacks import *
 from utils.data import clean_training_samples, DataGenerator
 
 NAME = 'model-architecture'
+dice_unity = weighted_dice_loss([1.,1.,1.,1.])
+dice_region_size = weighted_dice_loss([33., 157., 1., 5.])
+dice_sample_count = weighted_dice_loss([6., 24., 1., 10.])
+
 param_grid = ParameterGrid({
-    'model': [Unet, PSPNet, FPN],
-    'resolution': [(128, 800), (144, 912), (240, 1584), (256, 1600)],
-    'backbone': ['resnet18', 'seresnet18', 'resnet34', 'seresnet34', 'mobilenet'],
+    'model': [PSPNet],
+    'preload': [True],
+    'resolution': [(144, 912)],
+    'backbone': ['seresnet18'],
     'batch_size': [16],
     'optimizer': [SGD],
-    'learning_rate': [0.01],
+    'learning_rate': [0.001, 0.01],
     'momentum': [0.9],
-    'loss': [dice_bce_loss],
+    'loss': [dice_bce_loss, dice_unity, dice_region_size, dice_sample_count],
 })
 BLACKLIST = [
-    lambda p: p['model'] == Unet and p['resolution'] not in [(128, 800), (256, 1600)],
-    lambda p: p['model'] != Unet and p['resolution'] in [(128, 800), (256, 1600)]
+    lambda p: p['model'] in [Unet, FPN] and p['resolution'] not in [(128, 800), (256, 1600)],
+    lambda p: p['model'] not in [Unet, FPN] and p['resolution'] in [(128, 800), (256, 1600)]
 ]
 samples = pd.read_csv('data/raw/train.csv')
 samples = clean_training_samples(samples, 'data/raw/train_images/')
@@ -54,9 +61,10 @@ for params in param_grid:
         'batch' + str(params['batch_size']) + '-' + \
         params['optimizer'].__name__ + '-' + \
         'lr' + str(params['learning_rate']) + '-' + \
-        params['loss'].__name__
+        params['loss'].__name__  + '-' + \
+        ('preload' if params['preload'] else 'fresh')
     try:
-        os.makedirs(dir, exist_ok=True)
+        os.makedirs(dir, exist_ok=False)
         logging.info(dir)
         model = params['model'](
             backbone_name=params['backbone'],
@@ -65,6 +73,18 @@ for params in param_grid:
             activation='sigmoid',
             classes=4,
         )
+        if params['preload']:
+            pre_trained = glob.glob('../results/*{}-{}-{}*/best_model_*'.format(
+                params['model'].__name__ ,
+                str(params['resolution'][0]) + 'x' + str(params['resolution'][1]),
+                params['backbone'])
+            )
+            scores = [re.findall('best_model_(\d*\.?\d*)', p) for p in pre_trained]
+            scores = [ float(s[0]) if len(s) > 0 else 0.0 for s in scores]
+            scores = np.array(scores)
+            pre_trained = pre_trained[scores.argmax()]
+            model.load_weights(pre_trained)
+
         model.compile(
             params['optimizer'](lr=params['learning_rate'], momentum=params['momentum']),
             loss=params['loss'],
@@ -78,7 +98,7 @@ for params in param_grid:
             generator=train_generator,
             validation_data=test_generator,
             use_multiprocessing=True,
-            workers=-1,
+            workers=4,
             verbose=1,
             epochs=50,
             callbacks=[save_checkpoint(dir), early_stopping, visualize_epoch]

@@ -10,4 +10,4 @@ for model_path in models:
     model = load_model(model_path)
     test_distribution = compute_test_distribution(model)
     with open(model_path.replace('best_model.h5', 'training_distribution.json'), 'w+') as fp:
-                json.dump(test_distribution, fp, sort_keys=True, indent=4)
+            json.dump(test_distribution, fp, sort_keys=True, indent=4)
