@@ -32,19 +32,19 @@ def save_checkpoint(dir):
         os.makedirs(dir,exist_ok=True)
 
     return ModelCheckpoint(
-        os.path.join(dir, 'best_model_{val_loss:.5f}.h5'),
+        os.path.join(dir, 'best_model.h5'),
         monitor='val_loss',
         verbose=0,
         save_best_only=True,
         save_weights_only=False,
-        mode='auto'
+        mode='min'
     )
 
 early_stopping = EarlyStopping(
     monitor='val_loss',
-    min_delta=0.0005,
+    min_delta=0.0001,
     patience=3,
-    mode='auto'
+    mode='min'
 )
 
 class VisualizeEpoch(Callback):
